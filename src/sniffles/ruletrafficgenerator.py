@@ -464,6 +464,7 @@ class TrafficStream:
 
     def calculateIP(self, ip="", home=True):
         ip_generator = None
+        ip = ip.split(',')[0]
         if self.ip_type == 6:
             ip_generator = IPV6()
         else:
@@ -480,22 +481,41 @@ class TrafficStream:
             spcounter = 0
             while vals:
                 v = vals.pop(0)
+                v = v.strip('[')
+                v = v.strip(']')
+                not_ip = False
+                if v.startswith('!'):
+                    v = v.strip('!')
+                    not_ip=True
                 if int(v) > 0:
                     if spcounter > 0:
                         mynewip += splitter
-                    mynewip += v
+                    if not_ip:
+                        mynewip += str(int(v) + 1)
+                    else:
+                        mynewip += v
+
                 else:
                     break
                 spcounter += 1
             return ip_generator.gen_ip(home, mynewip)
         elif ip.lower() == '$HOME_NET':
             return ip_generator.gen_ip(True)
+        elif ip.lower() == '$HTTP_SERVERS':
+            return ip_generator.gen_ip(True)
         elif ip.lower() == '$EXTERNAL_NET':
             return ip_generator.gen_ip(False)
         elif ',' in ip:
             mychoices = ip.split(',')
             target = random.choice(mychoices)
-            return ip_generator.gen_ip(home, target)
+            if target == '$HOME_NET':
+                return ip_generator.gen_ip(True)
+            elif target == '$HTTP_SERVERS':
+                return ip_generator.gen_ip(True)
+            elif target == '$EXTERNAL_NET':
+                return ip_generator.gen_ip(False)
+            else:
+                return ip_generator.gen_ip(target)
         elif '.' in ip and self.ip_type == 4:
             return ip_generator.gen_ip(True, ip)
         elif ':' in ip and self.ip_type == 6:
@@ -1652,7 +1672,7 @@ class ContentGenerator:
         # GET
         http_method = [71, 69, 84]
         # /
-        http_uri = [47]
+        http_uri = []
         # Content-type: text-html
         http_header = [99, 111, 110, 116, 101, 110, 116, 45, 116, 121, 112,
                        101, 58, 32, 116, 101, 120, 116, 45, 104, 116, 109,
@@ -1695,12 +1715,16 @@ class ContentGenerator:
                             rule.getContentString())
                 elif rule.getHttpUri() or rule.getHttpRawUri():
                     if rule.getType() == 'content':
-                        http_uri = self.generate_from_content_strings(
+                        http_uri_internal = self.generate_from_content_strings(
                             rule.getContentString()
                         )
                     else:
-                        http_uri = self.generate_from_regex_wrapper(
+                        http_uri_internal = self.generate_from_regex_wrapper(
                             rule.getContentString())
+                    if http_uri_internal:
+                        http_uri.extend(http_uri_internal)
+                    else:
+                        http_uri = [47]
                 elif rule.getHttpCookie() or rule.getHttpRawCookie():
                     if rule.getType() == 'content':
                         http_cookie = self.generate_from_content_strings(
@@ -2263,6 +2287,10 @@ class IPV4(IP):
             bytes = prefix.split('.')
             for b in bytes:
                 if b:
+                    b=b.strip('[')
+                    b=b.strip(']')
+                    if b.startswith('!'):
+                        b=str(int(b.strip('!'))+1)
                     myip.append(int(b))
             start = len(myip)
         for _ in range(start, 4):
@@ -2382,7 +2410,10 @@ class Port:
         if port_val.find(":") >= 0:
             range = port_val.partition(":")
             if range[0]:
-                start = int(range[0])
+                try:
+                    start = int(range[0])
+                except:
+                    start = 0
             else:
                 start = 0
             if range[2] and int(range[2]) > start:

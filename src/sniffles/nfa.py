@@ -1027,8 +1027,11 @@ def pcre2nfa(re, turn_on_stats=False):
     for opt in options:
         if opt in PCRE_OPT:
             opts |= PCRE_OPT[opt]
-    code = sniffles.pcrecomp.compile(re, opts)
     nfa = NFA()
-    builder = NFABuilder(nfa, True)
-    builder.build(code, options)
+    try:
+        code = sniffles.pcrecomp.compile(re, opts)
+        builder = NFABuilder(nfa, True)
+        builder.build(code, options)
+    except:
+        pass
     return nfa
