@@ -1879,25 +1879,23 @@ class ContentGenerator:
         if content_string:
             generated = []
             i = 0
-            hex = False
-            while i < len(content_string):
-                if content_string[i] == '|':
-                    hex = not hex
+            hex_ = False
+            while i < len(content_string)-1:
+                current_item = content_string[i]
+                # print(i, hex_, current_item)
+                if current_item == '|':
+                    hex_ = not hex_
                     i += 1
-                if hex:
-                    if content_string[i] == ' ':
-                        i += 1
-                    if content_string[i] == '|':
-                        hex = not hex
-                        i += 1
-                        continue
-                    num = content_string[i:i + 2]
-                    generated.append(int(num, 16))
-                    i += 1
+                    if hex_:
+                        if content_string[i] == ' ':
+                            i += 1
+                        num = content_string[i:i + 2]
+                        generated.append(int(num, 16))
+                        i += 2
                 else:
                     if i < len(content_string):
                         generated.append(ord(content_string[i]))
-                i += 1
+                        i += 1
             return generated
 
     def test_for_http(self, list=None):
@@ -2407,6 +2405,7 @@ class Port:
         self.process_port_val(chosen_value)
 
     def process_port_val(self, port_val=None):
+        print(port_val)
         if port_val.find(":") >= 0:
             range = port_val.partition(":")
             if range[0]:
